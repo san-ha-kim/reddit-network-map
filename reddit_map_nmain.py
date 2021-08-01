@@ -41,14 +41,9 @@ def get_posts(num=300, sub='conspiracy'):
     return hot
 
 
-r = get_posts(num=5, sub='Superstonk')
+r = get_posts(num=5, sub='TwoXChromosomes')
 
 # --- Obtain the most active posters of a subreddit ---
-for s in r:
-    # if the post is not stickied
-    if not s.stickied:
-        # then print poster username and latest comments
-        print("Post ID: {}; Poster username: {}".format(s.id, s.author))
-        #print(s.author)
-        print(*s.author.comments.new(limit=7))
-        print(*s.author.submissions.new(limit=7))
+users = [s.author for s in r if not s.stickied]
+
+print(*users)
