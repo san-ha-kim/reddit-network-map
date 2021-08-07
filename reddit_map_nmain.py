@@ -1,21 +1,9 @@
 import praw
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
 
-# ===== Create class object for users =====
-
-"""class RedditDev:
-    def __init__(self):
-        # --- User ID and PW of the developer/admin ---
-        self.user_name = "username_admin"
-        self.password = "pw"
-        
-
-#class RedditUser:
-
-# ===== Create class object for posts =====
-#class RedditSub:"""
+sub_of_interest = 'TwoXChromosomes'
+num = 7
 
 # ===== Instantiate Reddit instance =====
 reddit = praw.Reddit(
@@ -37,22 +25,60 @@ def get_posts(num=300, sub='conspiracy'):
 
     sub = reddit.subreddit(sub)
 
-    hot = sub.hot(limit=num)
+    hot = sub.new(limit=num)
 
     return hot
 
 
-r = get_posts(num=5, sub='TwoXChromosomes')
+r = get_posts(num=5, sub=sub_of_interest)
 
 # --- Obtain the most active posters of a subreddit ---
 users = [s.author for s in r if not s.stickied]
 
 # --- Iterate over the users to see each user's most recent posts ---
-for user in users:
-    posts = user.submissions.new(limit=7)
+author = []
+subreddit_posted = []
+subreddit_commented = []
+is_OP = []
 
-    for p in posts:
-        print(user)
-        print(reddit.submission(id=p).subreddit)
-        print(20*'-')
+for user in users:
+    # -- New posts made by the author --
+    posts_ = user.submissions.new(limit=num)
+    # -- New comments made by the author ---
+    comments_ = user.comments.new(limit=num)
+
+    # -- Iterate over the posts to find the subreddit on which the redditor posted on --
+    for p, c in zip(posts_, comments_):
+        #print(user.name, p.id, c.submission.id)
+        print(20 * '-')
+
+        if p.id == c.submission.id:
+            is_OP.append(True)
+        else:
+            is_OP.append(False)
+
+        submission = reddit.submission(id=p.id).subreddit
+
+        # - Append the relevant data -
+        subreddit_commented.append(c.subreddit)  # comment subreddit
+        author.append(user)  # author
+        subreddit_posted.append(submission.display_name)  # post subreddit
+
+dataframe_dict = {
+    "original_author": author,  # author obtained from subreddit of interest
+    "submitted_to": subreddit_posted,  # name of subreddit the author posted to (can be NaN)
+    "commented_to": subreddit_commented,  # name of subreddit the author commented on (only top-level comment)
+    "commented_is_OP": is_OP,  # checks if the redditor of the commented post and the author are the same
+}
+
+reddit_network_dataframe = pd.DataFrame.from_dict(
+    dataframe_dict,
+    orient='index'
+).transpose()
+
+# print(reddit_network_dataframe)
+
+rn_df = reddit_network_dataframe[reddit_network_dataframe.commented_is_OP == False]
+
+print(rn_df)
 
