@@ -88,7 +88,7 @@ print(reddit_network_df.info())
 
 # --- Filter out the duplicate entries ---
 # -- Remove recent posts where the redditor posted on the same sub as the sub of interest --
-rn_df = reddit_network_df.drop()
+rn_df = reddit_network_df.drop(['submitted_to'])
 
 # -- Remove comments where the redditor replied to their own post --
 rn_df = reddit_network_df[reddit_network_df.commented_is_OP == False]
