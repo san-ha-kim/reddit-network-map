@@ -1,6 +1,7 @@
 import praw
 import numpy as np
 import pandas as pd
+import networkx as nx
 
 sub_of_interest = 'TwoXChromosomes'
 num = 7
@@ -25,9 +26,9 @@ def get_posts(num=300, sub='conspiracy'):
 
     sub = reddit.subreddit(sub)
 
-    hot = sub.new(limit=num)
+    new = sub.new(limit=num)
 
-    return hot
+    return new
 
 
 r = get_posts(num=5, sub=sub_of_interest)
@@ -49,8 +50,7 @@ for user in users:
 
     # -- Iterate over the posts to find the subreddit on which the redditor posted on --
     for p, c in zip(posts_, comments_):
-        #print(user.name, p.id, c.submission.id)
-        print(20 * '-')
+        print(user.name, p.id, c.submission.id)
 
         if p.id == c.submission.id:
             is_OP.append(True)
@@ -86,19 +86,22 @@ reddit_network_df = pd.DataFrame.from_dict(
 
 print(reddit_network_df.info())
 
-# --- Filter out the duplicate entries ---
-# -- Remove recent posts where the redditor posted on the same sub as the sub of interest --
-rn_df = reddit_network_df.drop(['submitted_to'])
+# -- Drop rows where the redditor posted to the same sub as the sub of interest, and where the redditor commented
+# on their own posts --
+rn_df = reddit_network_df.drop(
+    reddit_network_df[
+        (reddit_network_df['submitted_to'] == sub_of_interest)
+        |
+        (reddit_network_df['commented_is_OP'])
+    ].index
+)
 
-# -- Remove comments where the redditor replied to their own post --
-rn_df = reddit_network_df[reddit_network_df.commented_is_OP == False]
-"""rn_df = rn_df.astype(
-    {
-        "submitted_to": "category",
-        "commented_to": 'category',
-        'commented_is_OP': 'bool'
-    }
-)"""
+# -- Drop unnecessary column --
+rn_df.drop('commented_is_OP',
+           axis=1,
+           inplace=True)
 
+print('\n', rn_df.head())
 print('\n', rn_df.info())
 
+# === Define the variables for the nodes and links for the network map ===
