@@ -64,6 +64,7 @@ for user in users:
         author.append(user)  # author
         subreddit_posted.append(submission.display_name)  # post subreddit
 
+# --- Create dictionary to create the dataframe with ---
 dataframe_dict = {
     "original_author": author,  # author obtained from subreddit of interest
     "submitted_to": subreddit_posted,  # name of subreddit the author posted to (can be NaN)
@@ -71,14 +72,33 @@ dataframe_dict = {
     "commented_is_OP": is_OP,  # checks if the redditor of the commented post and the author are the same
 }
 
-reddit_network_dataframe = pd.DataFrame.from_dict(
-    dataframe_dict,
-    orient='index'
-).transpose()
+# --- Create pandas dataframe from the dictionary ---
+reddit_network_df = pd.DataFrame.from_dict(
+    dataframe_dict
+).astype(
+    {
+        'original_author': 'string',
+        "submitted_to": "category",
+        "commented_to": 'category',
+        'commented_is_OP': 'bool'
+    }
+)
 
-# print(reddit_network_dataframe)
+print(reddit_network_df.info())
 
-rn_df = reddit_network_dataframe[reddit_network_dataframe.commented_is_OP == False]
+# --- Filter out the duplicate entries ---
+# -- Remove recent posts where the redditor posted on the same sub as the sub of interest --
+rn_df = reddit_network_df.drop()
 
-print(rn_df)
+# -- Remove comments where the redditor replied to their own post --
+rn_df = reddit_network_df[reddit_network_df.commented_is_OP == False]
+"""rn_df = rn_df.astype(
+    {
+        "submitted_to": "category",
+        "commented_to": 'category',
+        'commented_is_OP': 'bool'
+    }
+)"""
+
+print('\n', rn_df.info())
 
