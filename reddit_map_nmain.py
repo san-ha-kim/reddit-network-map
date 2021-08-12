@@ -4,7 +4,7 @@ import pandas as pd
 import networkx as nx
 
 sub_of_interest = 'TwoXChromosomes'
-num = 7
+num = 5
 
 # ===== Instantiate Reddit instance =====
 reddit = praw.Reddit(
@@ -16,7 +16,7 @@ reddit = praw.Reddit(
 )
 
 
-def get_posts(num=300, sub='conspiracy'):
+def get_posts(num_posts=300, sub='conspiracy'):
     """
     This function retrieves a certain number of posts from a specified Subreddit,
     using specified sorts (e.g. hot, top, new). It returns the post ID, poster's username, post time, number of up/down
@@ -26,21 +26,20 @@ def get_posts(num=300, sub='conspiracy'):
 
     sub = reddit.subreddit(sub)
 
-    new = sub.new(limit=num)
+    new = sub.new(limit=num_posts)
 
     return new
 
 
-r = get_posts(num=5, sub=sub_of_interest)
+r = get_posts(num_posts=5, sub=sub_of_interest)
 
-# --- Obtain the most active posters of a subreddit ---
+# === Obtain the most active posters of a subreddit ===
 users = [s.author for s in r if not s.stickied]
 
-# --- Iterate over the users to see each user's most recent posts ---
+# === Iterate over the users to see each user's most recent posts ===
 author = []
 subreddit_posted = []
 subreddit_commented = []
-is_OP = []
 
 for user in users:
     # -- New posts made by the author --
@@ -50,58 +49,59 @@ for user in users:
 
     # -- Iterate over the posts to find the subreddit on which the redditor posted on --
     for p, c in zip(posts_, comments_):
-        print(user.name, p.id, c.submission.id)
-
+        print("Redditor: {} \nPost ID: {} \nComment post ID: {}\n"\
+              .format(user.name, p.id, c.submission.id), 20*'=')
+        """
         if p.id == c.submission.id:
             is_OP.append(True)
         else:
             is_OP.append(False)
-
+        """
         submission = reddit.submission(id=p.id).subreddit
 
-        # - Append the relevant data -
-        subreddit_commented.append(c.subreddit)  # comment subreddit
-        author.append(user)  # author
-        subreddit_posted.append(submission.display_name)  # post subreddit
+        # - Append data about author activity -
+        if not submission.display_name == sub_of_interest: # do not include data if post/comment is same as sub of
+                                                           # interest.
 
-# --- Create dictionary to create the dataframe with ---
+            # Append name of subreddit where author posted
+            subreddit_posted.append(submission.display_name)
+            # Append name of subreddit where author commented
+            subreddit_commented.append(c.subreddit)
+            # Append author username
+            author.append(user)
+
+# === Create dictionary to create the dataframe with ===
 dataframe_dict = {
     "original_author": author,  # author obtained from subreddit of interest
     "submitted_to": subreddit_posted,  # name of subreddit the author posted to (can be NaN)
     "commented_to": subreddit_commented,  # name of subreddit the author commented on (only top-level comment)
-    "commented_is_OP": is_OP,  # checks if the redditor of the commented post and the author are the same
 }
 
-# --- Create pandas dataframe from the dictionary ---
-reddit_network_df = pd.DataFrame.from_dict(
-    dataframe_dict
-).astype(
+# === Create pandas dataframe from the dictionary ===
+reddit_network_df = pd.DataFrame(
+    data={k: pd.Series(v) for k, v in dataframe_dict.items()}
+)
+
+# == Change datatype properly ==
+rn_df = reddit_network_df.astype(
     {
         'original_author': 'string',
         "submitted_to": "category",
         "commented_to": 'category',
-        'commented_is_OP': 'bool'
     }
 )
 
-print(reddit_network_df.info())
+print('----- Raw data ----- \n', reddit_network_df, '\n')
 
-# -- Drop rows where the redditor posted to the same sub as the sub of interest, and where the redditor commented
-# on their own posts --
-rn_df = reddit_network_df.drop(
-    reddit_network_df[
-        (reddit_network_df['submitted_to'] == sub_of_interest)
-        |
-        (reddit_network_df['commented_is_OP'])
-    ].index
-)
+# === Count unique subreddits in posted and commented to's ===
+rn_submits_count = pd.Series(rn_df['submitted_to'].value_counts())
+rn_comments_count = pd.Series(rn_df['commented_to'].value_counts())
+#rn_submits_cat = pd.Series(rn_df['submitted_to'].unique())
+#rn_comments_cat = pd.Series(rn_df['commented_to'].unique())
 
-# -- Drop unnecessary column --
-rn_df.drop('commented_is_OP',
-           axis=1,
-           inplace=True)
 
-print('\n', rn_df.head())
-print('\n', rn_df.info())
+# === Define network map variables ===
+nodes = list(rn_submits_count.index)
+weights = list(rn_submits_count.values)
 
-# === Define the variables for the nodes and links for the network map ===
+print(weights)
