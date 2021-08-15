@@ -17,6 +17,7 @@ G.add_edges_from(
         (2, 1),
         (1, 3),
         (3, 0),
+        (3, 0),
         ("Central node", 0)
     ]
 )

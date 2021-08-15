@@ -2,9 +2,10 @@ import praw
 import numpy as np
 import pandas as pd
 import networkx as nx
+import matplotlib.pyplot as plt
 
-sub_of_interest = 'TwoXChromosomes'
-num = 5
+sub_of_interest = 'FemaleDatingStrategy'
+num = 6
 
 # ===== Instantiate Reddit instance =====
 reddit = praw.Reddit(
@@ -16,7 +17,7 @@ reddit = praw.Reddit(
 )
 
 
-def get_posts(num_posts=300, sub='conspiracy'):
+def get_posts(sub, num_posts=3):
     """
     This function retrieves a certain number of posts from a specified Subreddit,
     using specified sorts (e.g. hot, top, new). It returns the post ID, poster's username, post time, number of up/down
@@ -31,50 +32,71 @@ def get_posts(num_posts=300, sub='conspiracy'):
     return new
 
 
-r = get_posts(num_posts=5, sub=sub_of_interest)
+r = get_posts(sub_of_interest, num_posts=6)
+
 
 # === Obtain the most active posters of a subreddit ===
-users = [s.author for s in r if not s.stickied]
 
 # === Iterate over the users to see each user's most recent posts ===
-author = []
-subreddit_posted = []
-subreddit_commented = []
+def get_activity(subreddit_posts, n):
+    """
+    Get the posts and comments of each redditor from a subreddit and return a list of the author name,
+    name of subreddit where they posted and commented to as list.
+    :param subreddit_posts: posts from specified subreddit
+    :param n: number of posts to retrieve
+    :return: three lists: name of author, subreddit name to which author posted to, subreddit name to which author
+    commented to
+    """
 
-for user in users:
-    # -- New posts made by the author --
-    posts_ = user.submissions.new(limit=num)
-    # -- New comments made by the author ---
-    comments_ = user.comments.new(limit=num)
+    # --- Retrieve redditor usernames from posts not stickied in subreddit ---
+    users = [s.author for s in subreddit_posts if not s.stickied]
 
-    # -- Iterate over the posts to find the subreddit on which the redditor posted on --
-    for p, c in zip(posts_, comments_):
-        print("Redditor: {} \nPost ID: {} \nComment post ID: {}\n"\
-              .format(user.name, p.id, c.submission.id), 20*'=')
-        """
-        if p.id == c.submission.id:
-            is_OP.append(True)
-        else:
-            is_OP.append(False)
-        """
-        submission = reddit.submission(id=p.id).subreddit
+    for user in users:
+        print(user.name)
+        print(25*'=')
 
-        # - Append data about author activity -
-        if not submission.display_name == sub_of_interest: # do not include data if post/comment is same as sub of
-                                                           # interest.
+    def get_author_names():
+        # -- User names of the author --
+        usernames = [author.name for author in users]
 
-            # Append name of subreddit where author posted
-            subreddit_posted.append(submission.display_name)
-            # Append name of subreddit where author commented
-            subreddit_commented.append(c.subreddit)
-            # Append author username
-            author.append(user)
+        return usernames
+
+    def get_post_names():
+        # -- New posts made by the author --
+        subreddit_posted = [
+            reddit.submission(id=p.id).subreddit.display_name
+            for user in users
+            for p in user.submissions.new(limit=n)
+            if reddit.submission(id=p.id).subreddit.display_name != sub_of_interest
+        ]
+
+        print(subreddit_posted)
+
+        return subreddit_posted
+
+    def get_comment_subs():
+        # -- New comments made by the author --
+        subreddit_commented = [
+            c.subreddit
+            for user in users
+            for c in user.submissions.new(limit=n)
+            if c.subreddit != sub_of_interest
+        ]
+
+        print(subreddit_commented)
+
+        return subreddit_commented
+
+    return get_author_names(), get_post_names(), get_comment_subs()
+
+
+redditor, posts, comments = get_activity(r, num)
 
 # === Create dictionary to create the dataframe with ===
 dataframe_dict = {
-    "original_author": author,  # author obtained from subreddit of interest
-    "submitted_to": subreddit_posted,  # name of subreddit the author posted to (can be NaN)
-    "commented_to": subreddit_commented,  # name of subreddit the author commented on (only top-level comment)
+    "original_author": redditor,  # author obtained from subreddit of interest
+    "submitted_to": posts,  # name of subreddit the author posted to (can be NaN)
+    "commented_to": comments,  # name of subreddit the author commented on (only top-level comment)
 }
 
 # === Create pandas dataframe from the dictionary ===
@@ -93,15 +115,47 @@ rn_df = reddit_network_df.astype(
 
 print('----- Raw data ----- \n', reddit_network_df, '\n')
 
-# === Count unique subreddits in posted and commented to's ===
-rn_submits_count = pd.Series(rn_df['submitted_to'].value_counts())
-rn_comments_count = pd.Series(rn_df['commented_to'].value_counts())
-#rn_submits_cat = pd.Series(rn_df['submitted_to'].unique())
-#rn_comments_cat = pd.Series(rn_df['commented_to'].unique())
-
-
 # === Define network map variables ===
-nodes = list(rn_submits_count.index)
-weights = list(rn_submits_count.values)
+# --- Summarise the posts and comments by counts into different lists ---
+nodes_posts = rn_df['submitted_to'].value_counts().index.tolist()
+weights_posts = rn_df['submitted_to'].value_counts().values.tolist()
 
-print(weights)
+print("length list:{}\nlength counts:{}".format(len(nodes_posts), len(weights_posts)))
+
+nodes_comments = rn_df['commented_to'].value_counts().index.tolist()
+weights_comments = rn_df['commented_to'].value_counts().values.tolist()
+
+print("nodes_posts before: {}".format(nodes_posts))
+
+for i, v in enumerate(nodes_comments):
+    if nodes_comments[i] == nodes_posts[i]:
+        weights_posts[i] += weights_comments[i]
+    else:
+        nodes_posts.append(nodes_comments[i].display_name)
+        weights_posts.append(weights_comments[i])
+
+print("nodes_posts after: {}".format(nodes_posts))
+
+# --- Dictionary to hold map information ---
+nodes_dict = {
+    "source": [sub_of_interest for i in range(len(nodes_posts))],
+    "posts_to": nodes_posts,
+    "weights": weights_posts
+}
+
+df_posts = pd.DataFrame(
+    nodes_dict
+)
+
+print('----- Map data ----- \n', df_posts, '\n')
+
+# === Draw network map ===
+G = nx.from_pandas_edgelist(
+    df_posts,
+    'source', 'posts_to', ['weights'],
+    create_using=nx.MultiDiGraph()
+)
+
+nx.draw_networkx(G)
+
+plt.show()
