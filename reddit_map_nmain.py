@@ -1,16 +1,12 @@
 import praw
 import pandas as pd
+from timeit import timeit
 import networkx as nx
 import matplotlib.pyplot as plt
-from bokeh.io import show, save
-from bokeh.models import Range1d, Circle, ColumnDataSource, MultiLine
-from bokeh.plotting import figure
-from bokeh.plotting import from_networkx
-from bokeh.palettes import Blues8, Reds8, Purples8, Oranges8, Viridis8, Spectral8
-from bokeh.transform import linear_cmap
+import plotly.graph_objects as go
 
 sub_of_interest = 'FemaleDatingStrategy'
-hard_limit = 6
+hard_limit = 12
 
 # ===== Instantiate Reddit instance =====
 reddit = praw.Reddit(
@@ -24,203 +20,162 @@ reddit = praw.Reddit(
 # === Obtain the most active posters of a subreddit ===
 
 
-def get_post_activity(subreddit, n_posts):
+def get_posters(subreddit=sub_of_interest, posts_count=6):
+    """
+    Retrieves a list of redditors who have recently posted on a subreddit
+    :param subreddit: subreddit to crawl
+    :param posts_count: number of posts to crawl
+    :return: List of usernames who have recently posted
     """
 
-    Retrieves new submissions made on a specified subreddit to obtain user activity information across subreddits,
-    by obtaining which subreddits a user has posted and commented to.
+    users = []
 
-    :param subreddit: specific subreddit to base the search on
-    :param n_posts: number of posts to retrieve
-    :return: lists of usernames and subreddit names
+    for s in reddit.subreddit(subreddit).new(limit=posts_count):
+        print(s.author)
+        print(25*"=")
+        users.append(s.author)
+
+    return users
+
+
+def get_commentors(subreddit=sub_of_interest, comments_count=30):
     """
-    users = [s.author for s in reddit.subreddit(subreddit).new(limit=n_posts)]
-
-    for u in users:
-        print(u.name)
-        print(20 * '=')
-
-    def get_poster_names():
-        """
-        Retrieves new submissions made by redditors made elsewhere other than the specified subreddit
-        :return: List of usernames
-        """
-        posters = [
-            poster.name
-            for poster in users
-            for p in poster.submissions.new(limit=n_posts)
-            # Discount posts in the same subreddit as the posts
-            if reddit.submission(id=p.id).subreddit.display_name != sub_of_interest
-        ]
-
-        print("Recent posters:", posters)
-
-        return posters
-
-    def get_commentor_names():
-        """
-        Retrieves new comments made by redditors commented in subs other than specified subreddit
-        :return: List of usernames
-        """
-        commentors = [
-            commentor.name
-            for commentor in users
-            for c in commentor.comments.new(limit=n_posts)
-            if c.subreddit != sub_of_interest
-        ]
-
-        print("Recent commentors:", commentors)
-
-        return commentors
-
-    def get_post_subs():
-        """
-        Retrieves new posts made by redditors, and which subreddit it was posted on.
-        :return: List of subreddit names
-        """
-        subreddit_posted = [
-            reddit.submission(id=p.id).subreddit.display_name
-            for user in users
-            for p in user.submissions.new(limit=n_posts)
-            if reddit.submission(id=p.id).subreddit.display_name != sub_of_interest
-        ]
-
-        print("User posted to:", subreddit_posted)
-
-        return subreddit_posted
-
-    def get_comment_subs():
-        """
-        Retrieves new comments made by redditors, and which subreddit it was commented on.
-        :return: List of subreddit names
-        """
-        subreddit_commented = [
-            c.subreddit.display_name
-            for user in users
-            for c in user.comments.new(limit=n_posts)
-            if c.subreddit != sub_of_interest
-        ]
-
-        print("User commented to:", subreddit_commented)
-
-        return subreddit_commented
-
-    return get_poster_names(), get_commentor_names(), get_post_subs(), get_comment_subs()
-
-
-def get_comment_activity():
+    Retrieves a list of redditors who have recently commented on a subreddit
+    :param subreddit: subreddit to crawl
+    :param comments_count: number of comments to crawl
+    :return: List of usernames who have recently commented
     """
-    
-    """
-    
+
+    users = []
+
+    for s in reddit.subreddit(subreddit).comments(limit=comments_count):
+        print(s.author)
+        print(25*"~")
+        users.append(s.author)
+
+    return users
 
 
-author, commentor, posts, comments = get_post_activity(sub_of_interest, hard_limit)
+def get_post_dataframe(subreddit=sub_of_interest, limit=6):
 
-# === Create dictionaries to create the dataframe with ===
-posts_dict = {
-    "post_author": author,  # author obtained from subreddit of interest
-    "target_post": posts,  # name of subreddit the author posted to (can be NaN)
-}
+    post_users = get_posters(subreddit, limit)
 
-comments_dict = {
-    "comment_author": commentor,
-    "target_comment": comments
-}
+    # --- Redditor name who posted to subs that's not sub of interest ---
+    posters = [
+        poster.name
+        for poster in post_users
+        for p in poster.submissions.new(limit=limit)
+        if reddit.submission(id=p.id).subreddit.display_name != subreddit
+    ]
 
-# === Create pandas dataframe from the dictionaries ===
-df_posts = pd.DataFrame(
-    data={k: pd.Series(v) for k, v in posts_dict.items()}
-)
+    # --- Names of subreddit to which the redditor posted to
+    subreddit_posted = [
+        reddit.submission(id=p.id).subreddit.display_name
+        for poster in post_users
+        for p in poster.submissions.new(limit=limit)
+        if reddit.submission(id=p.id).subreddit.display_name != sub_of_interest
+    ]
 
-df_comments = pd.DataFrame(
-    data={k: pd.Series(v) for k, v in comments_dict.items()}
-)
+    # === Define network map variables as dataframe ===
+    # -- Value counts of posts --
+    df_counts_p = pd.DataFrame()
+    df_counts_p['target'] = subreddit_posted.count()
+    df_counts_p['weight'] = df['subs_posted'].value_counts().values
 
-print('----- Raw data ----- \n', df_posts, '\n----------\n', df_comments)
+    df_counts_p = df_counts_p.astype(
+        {
+            'target': 'category',
+            'weight': 'int64'
+        }
+    )
 
-# === Define network map variables as dataframe ===
-# -- Value counts of posts --
-df_counts_p = pd.DataFrame()
-# df_counts_p['source'] = [sub_of_interest for i in range(len(df_posts.value_counts()))]
-df_counts_p['target'] = df_posts['target_post'].value_counts().index
-df_counts_p['weight'] = df_posts['target_post'].value_counts().values
+def get_comm_activity(subreddit=sub_of_interest, limit=6):
 
-df_counts_p = df_counts_p.astype(
-    {
-        'target': 'category',
-        'weight': 'int64'
+    comm_users = get_commentors(subreddit, limit)
+
+    commentors = [
+        comm.name
+        for comm in comm_users
+        for c in comm.comments.new(limit=limit)
+        if c.subreddit != sub_of_interest
+    ]
+
+    subreddit_commented = [
+        c.subreddit.display_name
+        for user in comm_users
+        for c in user.comments.new(limit=limit)
+        if c.subreddit != sub_of_interest
+    ]
+
+    output_dict = {
+        "commentor": commentors,
+        "subs_commented": subreddit_commented
     }
-)
 
-print("----- Value count (post) data -----\n", df_counts_p, '\n')
+    return output_dict
 
-# -- Value counts of comments --
-df_counts_c = pd.DataFrame()
-df_counts_c['target'] = df_comments['target_comment'].value_counts().index
-df_counts_c['weight'] = df_comments['target_comment'].value_counts().values
 
-df_counts_c = df_counts_c.astype(
-    {
-        'target': 'category',
-        'weight': 'int64'
-    }
-)
+def main():
 
-print("----- Value count (comment) data -----\n", df_counts_c, '\n')
 
-# --- Merge the count dataframes together to aid in summing the submissions and comments activity, to be used
-# for network mapping ---
-df_nx = df_counts_p.merge(
-    df_counts_c,
-    how='outer',
-    on='target',
-    suffixes=['_p', '_c']
-).fillna(0)
+    comments_dict = get_comm_activity(sub_of_interest, 6)
 
-df_nx['weight_total'] = df_nx['weight_p'] + df_nx['weight_c']
-df_nx['source'] = [sub_of_interest for i in range(len(df_nx))]
+    # === Create pandas dataframe from the dictionaries ===
+    df_posts = pd.DataFrame.from_dict(posts_dict)
+    df_comments = pd.DataFrame.from_dict(comments_dict)
 
-# -- Drop unnecessary columns --
-df_nx.drop(['weight_p', 'weight_c'], axis=1, inplace=True)
-df_nx.sort_values(by='weight_total', inplace=True)
+    print('----- Raw data -----')
+    print(df_posts, '\n')
+    print(df_comments)
 
-# Examine the dataframe
-print('----- Map data ----- \n', df_nx, '\n')
+    # === Define network map variables as dataframe ===
+    # -- Value counts of posts --
+    df_counts_p = pd.DataFrame()
+    df_counts_p['target'] = df_posts['subs_posted'].value_counts().index
+    df_counts_p['weight'] = df_posts['subs_posted'].value_counts().values
 
-# - Send to Excel for quick view -
-# df_nx.to_excel('df_nx.xlsx')
+    df_counts_p = df_counts_p.astype(
+        {
+            'target': 'category',
+            'weight': 'int64'
+        }
+    )
 
-# === Instantiate the graph object for network map ===
-G = nx.from_pandas_edgelist(
-    df_nx,
-    'source', 'target', ['weight_total'],
-    create_using=nx.MultiDiGraph()
-)
+    print("----- Value count (post) data -----\n", df_counts_p, '\n')
 
-# === Define the parameters for graph object ===
-# - Choose a title! -
-title = '{} subreddit activity map'.format(sub_of_interest)
+    # -- Value counts of comments --
+    df_counts_c = pd.DataFrame()
+    df_counts_c['target'] = df_comments['subs_commented'].value_counts().index
+    df_counts_c['weight'] = df_comments['subs_commented'].value_counts().values
 
-# - Establish which categories will appear when hovering over each node -
-HOVER_TOOLTIPS = [("Subreddit", "@index")]
+    df_counts_c = df_counts_c.astype(
+        {
+            'target': 'category',
+            'weight': 'int64'
+        }
+    )
 
-# Create a plot — set dimensions, toolbar, and title
-plot = figure(tooltips=HOVER_TOOLTIPS,
-              tools="pan,wheel_zoom,save,reset", active_scroll='wheel_zoom',
-              x_range=Range1d(-10.1, 10.1), y_range=Range1d(-10.1, 10.1), title=title)
+    print("----- Value count (comment) data -----\n", df_counts_c, '\n')
 
-# Create a network graph object with spring layout
-# https://networkx.github.io/documentation/networkx-1.9/reference/generated/networkx.drawing.layout.spring_layout.html
-network_graph = from_networkx(G, nx.spring_layout, scale=10, center=(0, 0))
+    # --- Merge the count dataframes together to aid in summing the submissions and comments activity, to be used
+    # for network mapping ---
+    df_nx = df_counts_p.merge(
+        df_counts_c,
+        how='outer',
+        on='target',
+        suffixes=('_p', '_c')
+    ).fillna(0)
 
-# Set node size and color
-network_graph.node_renderer.glyph = Circle(size=15, fill_color='skyblue')
+    df_nx['weight_total'] = df_nx['weight_p'] + df_nx['weight_c']
+    df_nx['source'] = [sub_of_interest for i in range(len(df_nx))]
 
-# Set edge opacity and width
-network_graph.edge_renderer.glyph = MultiLine(line_alpha=0.5, line_width=1)
+    # -- Drop unnecessary columns --
+    df_nx.drop(['weight_p', 'weight_c'], axis=1, inplace=True)
+    df_nx.sort_values(by='weight_total', inplace=True, ascending=False)
 
-# Add network graph to the plot
-plot.renderers.append(network_graph)
+    # Examine the dataframe
+    print('----- Map data ----- \n', df_nx, '\n')
 
-show(plot)
+
+if __name__ == "__main__":
+    main()
