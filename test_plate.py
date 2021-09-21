@@ -9,22 +9,9 @@ reddit = praw.Reddit(
     user_agent='1'
 )
 
-sub_of_interest = 'FiftyFifty'
+subreddit = 'FemaleDatingStrategy'
+hard_limit = 6
 
-num = 2
+users = [s.author for s in reddit.subreddit(subreddit).comments(limit=hard_limit)]
 
-# --- Retrieve non-stickied posts ---
-sticky_count = 0
-sub = reddit.subreddit(sub_of_interest)
-
-s = []
-
-# -- Check for stickied posts --
-for sticky in sub.new(limit=num):
-    if sticky.stickied:
-        s.append(sticky)
-        print("Pinned post ID: {}".format(sticky))
-
-for submission in sub.hot(limit=num+len(s)):
-    if not submission.stickied:
-        print(submission)
+print(users)

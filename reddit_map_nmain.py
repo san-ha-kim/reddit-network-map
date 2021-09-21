@@ -76,10 +76,17 @@ def get_post_dataframe(subreddit=sub_of_interest, limit=6):
         if reddit.submission(id=p.id).subreddit.display_name != sub_of_interest
     ]
 
+    df = pd.DataFrame(
+        data={
+            'author': posters,
+            'subs_posted': subreddit_posted
+        }
+    )
+
     # === Define network map variables as dataframe ===
     # -- Value counts of posts --
     df_counts_p = pd.DataFrame()
-    df_counts_p['target'] = subreddit_posted.count()
+    df_counts_p['target'] = df['subs_posted'].value_counts().index
     df_counts_p['weight'] = df['subs_posted'].value_counts().values
 
     df_counts_p = df_counts_p.astype(
