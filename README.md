@@ -5,5 +5,6 @@ Reddit is a social networking site (SNS) that is somewhat different from more po
 
 The subreddits are formed based on a specific theme. This theme can be as generic as r/worldnews, which is a subreddit about news around the world; r/pics which is a subreddit where users simply submit whatever pictures they'd like; the theme of a subreddit can be geographical (e.g. r/Italy, r/Boston), around hobbies (e.g. r/gaming, r/leagueoflegends), even meta-ironic commentary of redditors' behaviors (e.g. r/gamingcirclejerk). Simply, a Reddit is a host of vast subreddits, which can be just about anything.
 
-### Reddit as a social network
+### (Social) Network Analysis
 
+Network analysis (NA) is a technique often employed in social sciences to depict interaction among entities (e.g. individuals, corporates, cliques). 
