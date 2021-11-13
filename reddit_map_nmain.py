@@ -1,9 +1,6 @@
 import praw
 import pandas as pd
-from timeit import timeit
-import networkx as nx
-import matplotlib.pyplot as plt
-import plotly.graph_objects as go
+from pyvis.network import Network
 
 sub_of_interest = 'FemaleDatingStrategy'
 hard_limit = 12
@@ -11,6 +8,7 @@ hard_limit = 12
 # ===== Instantiate Reddit instance =====
 reddit = praw.Reddit(
     client_id='FE5apSBviVjlEQ',
+              "FE5apSBviVjlEQp"
     client_secret='4lOv7xDgIn-XzFBmyFeBB8REpkTQzQ',
     username='mrkillercow',
     password='S4nh4k1mi99e',
@@ -56,9 +54,15 @@ def get_commentors(subreddit=sub_of_interest, comments_count=30):
     return users
 
 
-def get_post_dataframe(subreddit=sub_of_interest, limit=6):
-
-    post_users = get_posters(subreddit, limit)
+def get_post_activity(subreddit=sub_of_interest, user_lim=6, limit=12):
+    """
+    Obtain post activity based on where the redditor posted to.
+    :param subreddit: Subreddit to crawl over
+    :param user_lim: limit on how many users to call
+    :param limit: number of posts to crawl
+    :return: DataFrame of post destination
+    """
+    post_users = get_posters(subreddit, user_lim)
 
     # --- Redditor name who posted to subs that's not sub of interest ---
     posters = [
@@ -76,6 +80,7 @@ def get_post_dataframe(subreddit=sub_of_interest, limit=6):
         if reddit.submission(id=p.id).subreddit.display_name != sub_of_interest
     ]
 
+    # --- Generate dataframe of the extracted information
     df = pd.DataFrame(
         data={
             'author': posters,
@@ -83,8 +88,7 @@ def get_post_dataframe(subreddit=sub_of_interest, limit=6):
         }
     )
 
-    # === Define network map variables as dataframe ===
-    # -- Value counts of posts --
+    # --- Create another dataframe to define the activity scores --
     df_counts_p = pd.DataFrame()
     df_counts_p['target'] = df['subs_posted'].value_counts().index
     df_counts_p['weight'] = df['subs_posted'].value_counts().values
@@ -96,10 +100,20 @@ def get_post_dataframe(subreddit=sub_of_interest, limit=6):
         }
     )
 
-def get_comm_activity(subreddit=sub_of_interest, limit=6):
+    return df_counts_p
 
-    comm_users = get_commentors(subreddit, limit)
 
+def get_comm_activity(subreddit=sub_of_interest, user_lim=6, limit=12):
+    """
+    Obtains where redditors have commented to
+    :param subreddit: subreddit to crawl over
+    :param user_lim: limit on how many users to call
+    :param limit: limit on number of comments
+    :return: DataFrame of author and comment destination subreddit.
+    """
+    comm_users = get_commentors(subreddit, user_lim)
+
+    # === List of commentor usernames ===
     commentors = [
         comm.name
         for comm in comm_users
@@ -107,6 +121,7 @@ def get_comm_activity(subreddit=sub_of_interest, limit=6):
         if c.subreddit != sub_of_interest
     ]
 
+    # === List of where the commentors commented to ===
     subreddit_commented = [
         c.subreddit.display_name
         for user in comm_users
@@ -114,41 +129,14 @@ def get_comm_activity(subreddit=sub_of_interest, limit=6):
         if c.subreddit != sub_of_interest
     ]
 
+    # === Arrange in dictionary ===
     output_dict = {
         "commentor": commentors,
         "subs_commented": subreddit_commented
     }
 
-    return output_dict
-
-
-def main():
-
-
-    comments_dict = get_comm_activity(sub_of_interest, 6)
-
-    # === Create pandas dataframe from the dictionaries ===
-    df_posts = pd.DataFrame.from_dict(posts_dict)
-    df_comments = pd.DataFrame.from_dict(comments_dict)
-
-    print('----- Raw data -----')
-    print(df_posts, '\n')
-    print(df_comments)
-
-    # === Define network map variables as dataframe ===
-    # -- Value counts of posts --
-    df_counts_p = pd.DataFrame()
-    df_counts_p['target'] = df_posts['subs_posted'].value_counts().index
-    df_counts_p['weight'] = df_posts['subs_posted'].value_counts().values
-
-    df_counts_p = df_counts_p.astype(
-        {
-            'target': 'category',
-            'weight': 'int64'
-        }
-    )
-
-    print("----- Value count (post) data -----\n", df_counts_p, '\n')
+    # === Make dataframe ===
+    df_comments = pd.DataFrame.from_dict(output_dict)
 
     # -- Value counts of comments --
     df_counts_c = pd.DataFrame()
@@ -162,8 +150,16 @@ def main():
         }
     )
 
-    print("----- Value count (comment) data -----\n", df_counts_c, '\n')
+    return df_counts_c
 
+
+def main():
+    df_counts_p = get_post_activity(sub_of_interest, user_lim=3, limit=hard_limit)
+    df_counts_c = get_comm_activity(sub_of_interest, user_lim=3, limit=hard_limit)
+
+    print(df_counts_p)
+    print(df_counts_c)
+    """
     # --- Merge the count dataframes together to aid in summing the submissions and comments activity, to be used
     # for network mapping ---
     df_nx = df_counts_p.merge(
@@ -182,6 +178,19 @@ def main():
 
     # Examine the dataframe
     print('----- Map data ----- \n', df_nx, '\n')
+
+    edge_tuples = [(sub_of_interest, sub, w) for w, sub in zip(df_nx['weight_total'], df_nx['target'])]
+
+    node_list = df_nx['target'].tolist()
+    node_list = node_list + [sub_of_interest]
+
+    nx = Network()
+
+    nx.add_nodes(node_list, label=node_list)
+
+    nx.add_edges(edge_tuples)
+
+    nx.show("nodes.html")"""
 
 
 if __name__ == "__main__":
