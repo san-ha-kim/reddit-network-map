@@ -23,7 +23,7 @@ def get_users(sub=sub_of_interest, post_count=8, comment_count=12):
     except Forbidden:
         print("Tried to access Forbidden")
         #pass
-    
+
     commentors = [] 
     
     try: 
@@ -35,13 +35,6 @@ def get_users(sub=sub_of_interest, post_count=8, comment_count=12):
                 pass
     except Forbidden:
         print("Tried to access Forbidden")
-        #pass
-    """
-    commenters = [
-        c.author.name
-        for c in reddit.subreddit(sub).comments(limit=comment_count)  
-        if c.author.name != "AutoModerator"
-    ]"""
     
     # === Combine the posters and commentors ===
     redditors = posters + commentors    
