@@ -1,5 +1,28 @@
 import praw
 from prawcore.exceptions import Forbidden
+from decouple import Config, RepositoryEnv
+
+DOTENV_FILE = '.config/.env'
+env_config = Config(RepositoryEnv(DOTENV_FILE))
+
+# use the Config().get() method as you normally would since 
+# decouple.config uses that internally. 
+# i.e. config('SECRET_KEY') = env_config.get('SECRET_KEY')
+secret = env_config.get('SECRET')
+un = env_config.get('USER')
+pw = env_config.get('PW')
+client_id = env_config.get('CLIENT_ID')
+
+reddit = praw.Reddit(
+    username=un,
+    password=pw,
+    client_secret=secret,
+    client_id=client_id,
+    user_agent='network_map'
+)
+
+# <<< Check if Reddit instance has been properly called >>>
+print(reddit.user.me())
 
 sub_of_interest = "aww"
 
