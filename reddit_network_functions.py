@@ -24,13 +24,6 @@ def get_users(sub=sub_of_interest, post_count=8, comment_count=12):
         print("Tried to access Forbidden")
         #pass
     
-    """posters = [
-        s.author.name                                         #<- Redditor who posted
-        for s in reddit.subreddit(sub).new(limit=post_count)  #<- from most recent posts
-        if s.author.name != "AutoModerator"                   #<- remove auto moderator
-    ]"""
-    
-    
     commentors = [] 
     
     try: 

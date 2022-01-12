@@ -1,0 +1,7 @@
+python-decouple
+networkx
+pyvis
+matplotlib
+pandas
+numpy
+praw
