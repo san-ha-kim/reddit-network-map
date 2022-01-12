@@ -1,20 +1,26 @@
 import praw
+from prawcore.exceptions import Forbidden
+import numpy as np
 import pandas as pd
 from pyvis.network import Network
+import networkx as nx
+import matplotlib.pyplot as plt
+from decouple import config
 
-sub_of_interest = 'FemaleDatingStrategy'
-hard_limit = 12
+sub_of_interest = "TwoXChromosomes"
 
-# ===== Instantiate Reddit instance =====
+username = config('USER')
+pw = config()
+
 reddit = praw.Reddit(
-    client_id='FE5apSBviVjlEQ',
-              "FE5apSBviVjlEQp"
-    client_secret='4lOv7xDgIn-XzFBmyFeBB8REpkTQzQ',
     username='mrkillercow',
     password='S4nh4k1mi99e',
-    user_agent='1'
+    client_secret='4lOv7xDgIn-XzFBmyFeBB8REpkTQzQ',
+    client_id='FE5apSBviVjlEQ',
+    user_agent='network_map'
 )
 
+print(reddit.user.me())
 # === Obtain the most active posters of a subreddit ===
 
 
