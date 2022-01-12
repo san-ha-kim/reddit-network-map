@@ -59,6 +59,15 @@ def main(sub_of_interest=soi):
         as_index=False
     ).agg(d).reindex(columns=df.columns)
     
+    df.astype(
+        {
+            'source':'category',
+            'target':'category',
+            'type':'category',
+            'weight':'int64'
+        }
+    )
+    
     print(df.info())
     
     # =================================================================
