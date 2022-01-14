@@ -16,4 +16,21 @@ Network analysis (NA) is a technique often employed in social sciences to depict
 In this project, a small network analysis will be done to see which subreddits are popular to redditors who visit particular subreddits, and how these subreddits are connected as a network.
 
 ## Motivation
-The reason for starting this project is because I was curious. There are still some toxic subreddits that exist, and I was curious what other subreddits redditors would frequent.
+Curiosity drove this project. There are many subreddits, and I was curious to see what kind of other subreddits the redditors of the particular subreddits would dwell.
+
+## Dependency
+- Python Reddit API Wrapper (PRAW)
+- Pandas
+- PyVis
+- NetworkX
+
+## How it works
+
+### 1. Designate the subreddit of interest and find the most recent comments and posts
+Anyone can post (provided they follow the rules of the subreddit) and comment on any post. First step is the specify which subreddit to scrape over, and to find users who have recently posted and/or commented.
+
+### 2. Find recent posts and comments made by the obtained user list
+Next, find to which subreddits the users have commented and posted to, and calculate how often.
+
+### 3. Visualize
+Define the nodes and edges to visualize the network, with the subreddit of interest at its center.
