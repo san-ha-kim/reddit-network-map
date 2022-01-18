@@ -26,6 +26,14 @@ print(reddit.user.me())
 
 sub_of_interest = ""
 
+def remove_self_loops(dataframe, column_1, column_2):
+    
+    mask = dataframe.apply(lambda x: x[column_1] in x[column_2], axis=1)
+    
+    df = dataframe[~mask]
+    
+    return df
+
 def get_users(sub=sub_of_interest, post_count=8, comment_count=12):
     """
     Finds the most recently active users in a subreddit. It's easier to comment than to post on a subreddit, so more comments are collected.
@@ -39,7 +47,9 @@ def get_users(sub=sub_of_interest, post_count=8, comment_count=12):
     
     try:
         for s in reddit.subreddit(sub).new(limit=post_count):
-            if None:
+            print(type(s.author))
+            if s.author is None:
+                print("Nonetype error")
                 pass
                 
             elif s.author.name == "AutoModerator":
@@ -53,7 +63,9 @@ def get_users(sub=sub_of_interest, post_count=8, comment_count=12):
     try: 
         # --- Same with commentors ---
         for c in reddit.subreddit(sub).comments(limit=comment_count):
-            if None:
+            print(type(c.author))
+            if c.author is None:
+                print("Nonetype error")
                 pass
             
             elif c.author.name != "AutoModerator":
@@ -149,12 +161,3 @@ def get_redditor_activity(subreddit, post_count=8, comment_count=12, filter_soi=
     #activity_list = posts_subreddits + comments_subreddits
     
     return posts_subreddits + comments_subreddits
-
-
-def remove_self_loops(dataframe, column_1, column_2):
-    
-    mask = dataframe.apply(lambda x: x[column_1] in x[column_2], axis=1)
-    
-    df = dataframe[~mask]
-    
-    return df

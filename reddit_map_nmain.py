@@ -1,13 +1,9 @@
-import praw
-from prawcore.exceptions import Forbidden
+
 from reddit_network_functions import *
-import numpy as np
 import pandas as pd
 from pyvis.network import Network
-import networkx as nx
-import matplotlib.pyplot as plt
 
-soi = "FemaleDatingStrategy"
+soi = "MensRights"
 
 def main(sub_of_interest=soi):
     
@@ -16,6 +12,7 @@ def main(sub_of_interest=soi):
     # ========================================================
     primary_activity = get_redditor_activity(sub_of_interest, post_count=7, comment_count=10, filter_soi=True)
     print(primary_activity[:5])
+    print(f"Total length: {len(primary_activity)}")
     
     # ================================================
     # 2) Organize into dataframe and remove self-loops
@@ -40,11 +37,10 @@ def main(sub_of_interest=soi):
     # 4) Merge primary and secondary dataframes into one large dataframe
     # ==================================================================
     df = pd.concat([df_primary, df_secondary], ignore_index=True)
-    print(f"Master dataframe shape: {df.shape}")
     
     # === Remove self-loops ===
     df = remove_self_loops(df, 'source', 'target')
-    
+
     # =====================================
     # 5) Determine the weights of each edge
     # =====================================
@@ -72,7 +68,7 @@ def main(sub_of_interest=soi):
     
     # save as CSV for later analysis
     
-    df.to_csv("reddit_network.csv", mode="w", header=False)
+    df.to_csv("reddit_network.csv", mode="a", header=False, index=False)
     
     # =================================================================
     # 6) Specify source and target for network visualization with PyVis
@@ -85,7 +81,16 @@ def main(sub_of_interest=soi):
     
     # find number of subscribers in the subreddits
     members = [reddit.subreddit(m).subscribers for m in n]
-    print(members)
+    
+    # find if subreddit is NSFW    
+    nsfw = [reddit.subreddit(sub).over18 for sub in n]
+    nsfw_color = []
+    
+    for sub in nsfw:
+        if sub is True:
+            nsfw_color.append("#ff00cc")
+        else:
+            nsfw_color.append("#d9d9d9")            
 
     # convert subreddit names into numeric labels
     nodes = {v: k for k, v in enumerate(n)}
@@ -101,10 +106,25 @@ def main(sub_of_interest=soi):
     
     nx_pv = Network("1000px", "1000px")
 
-    nx_pv.add_nodes(node_list, label=node_labels)
+    nx_pv.add_nodes(node_list, label=node_labels, value=members, color=nsfw_color)
 
     nx_pv.add_edges(edge_list)
-    nx_pv.show_buttons(filter_=['physics'])
+    nx_pv.set_options("""
+        var options = {
+            "physics": {
+                "barnesHut": {
+                    "gravitationalConstant": -12450,
+                    "centralGravity": 1.2,
+                    "springLength": 165,
+                    "springConstant": 0.025,
+                    "damping": 0.33,
+                    "avoidOverlap": 0.72
+                },
+            "minVelocity": 0.75
+            }
+        }
+    """)
+    #nx_pv.show_buttons(filter_=['physics'])
     nx_pv.save_graph(f"reddit_map_{sub_of_interest}.html")
 
 
