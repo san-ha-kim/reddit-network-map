@@ -1,2 +1,5 @@
 .env
-.config
+/.config
+*.ipynb
+/.idea
+/.ipynb_checkpoints

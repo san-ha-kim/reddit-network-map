@@ -7,7 +7,7 @@ from pyvis.network import Network
 import networkx as nx
 import matplotlib.pyplot as plt
 
-soi = "antiwork"
+soi = "FemaleDatingStrategy"
 
 def main(sub_of_interest=soi):
     
@@ -59,7 +59,7 @@ def main(sub_of_interest=soi):
         as_index=False
     ).agg(d).reindex(columns=df.columns)
     
-    df.astype(
+    df = df.astype(
         {
             'source':'category',
             'target':'category',
@@ -70,6 +70,10 @@ def main(sub_of_interest=soi):
     
     print(df.info())
     
+    # save as CSV for later analysis
+    
+    df.to_csv("reddit_network.csv", mode="w", header=False)
+    
     # =================================================================
     # 6) Specify source and target for network visualization with PyVis
     # =================================================================
@@ -78,9 +82,13 @@ def main(sub_of_interest=soi):
     s = df.source.unique().tolist()
     t = df.target.unique().tolist()
     n = list(set(s+t))
+    
+    # find number of subscribers in the subreddits
+    members = [reddit.subreddit(m).subscribers for m in n]
+    print(members)
 
     # convert subreddit names into numeric labels
-    nodes = {v: k for k, v in enumerate(n, 0)}
+    nodes = {v: k for k, v in enumerate(n)}
 
     # add new column
     df['source_num'] = df['source'].map(nodes)
@@ -91,7 +99,7 @@ def main(sub_of_interest=soi):
     node_labels = list(nodes.keys())
     edge_list = [(source, target, weight) for source, target, weight in zip(df.source_num, df.target_num, df.weight)]
     
-    nx_pv = Network("500px", "1000px")
+    nx_pv = Network("1000px", "1000px")
 
     nx_pv.add_nodes(node_list, label=node_labels)
 

@@ -24,7 +24,7 @@ reddit = praw.Reddit(
 # <<< Check if Reddit instance has been properly called >>>
 print(reddit.user.me())
 
-sub_of_interest = "aww"
+sub_of_interest = ""
 
 def get_users(sub=sub_of_interest, post_count=8, comment_count=12):
     """
@@ -39,10 +39,11 @@ def get_users(sub=sub_of_interest, post_count=8, comment_count=12):
     
     try:
         for s in reddit.subreddit(sub).new(limit=post_count):
-            if s.author.name != "AutoModerator":
-                posters.append(s.author.name)
-            elif type(s.author.name) == None:
+            if None:
                 pass
+                
+            elif s.author.name == "AutoModerator":
+                posters.append(s.author.name)
     except Forbidden:
         print("Tried to access Forbidden")
         #pass
@@ -52,10 +53,12 @@ def get_users(sub=sub_of_interest, post_count=8, comment_count=12):
     try: 
         # --- Same with commentors ---
         for c in reddit.subreddit(sub).comments(limit=comment_count):
-            if c.author.name != "AutoModerator":
-                commentors.append(c.author.name)
-            elif type(c.author.name) == None:
+            if None:
                 pass
+            
+            elif c.author.name != "AutoModerator":
+                commentors.append(c.author.name)
+
     except Forbidden:
         print("Tried to access Forbidden")
     
