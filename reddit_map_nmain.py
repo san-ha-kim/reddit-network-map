@@ -3,7 +3,7 @@ from reddit_network_functions import *
 import pandas as pd
 from pyvis.network import Network
 
-soi = "MensRights"
+soi = "TwoXChromosomes"
 
 def main(sub_of_interest=soi):
     
@@ -28,8 +28,14 @@ def main(sub_of_interest=soi):
 
     primary_target = list(df_primary.target.unique())
 
-    for subreddit in primary_target:
-        secondary_activity = get_redditor_activity(subreddit, post_count=2, comment_count=5, filter_soi=False)
+    members = []
+    
+    for s in primary_target:
+        # --- Find the number of subscribers in the subreddits ---        
+        members.append(reddit.subreddit(s).subscribers)
+        
+        
+        secondary_activity = get_redditor_activity(s, post_count=2, comment_count=5, filter_soi=False)
 
         df_secondary = df_secondary.append(secondary_activity, ignore_index=True)
             
